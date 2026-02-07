@@ -1,0 +1,827 @@
+openapi: 3.0.0
+servers:
+  - url: https://api.tomtom.com
+info:
+  description: |-  
+    The Traffic API consists of the Traffic Incidents and Traffic Flow services with their endpoints. They are suites of web services designed for developers to create web and mobile applications around real-time traffic.  
+    
+      - These web services can be used via RESTful APIs.   
+    
+      - Both services are based on the real-time traffic data TomTom Traffic™.  
+
+    The TomTom Traffic team offers a wide range of solutions to enable you to get the most out of your applications. Make use of the real-time traffic products or the historical traffic analytics to create applications and analysis that fits the needs of your end-users.  
+
+    The offering is split into two services with their respective endpoints:  
+
+      - **Traffic Incidents**: This service provides an accurate view about traffic jams and incidents around a road network.  
+
+      - **Traffic Flow**: This service provides real time observed speeds and travel times for all key roads in a network.  
+
+
+  version: 1.0.0
+  title: Traffic API
+  contact:
+    name: Contact Us
+    url: https://support.tomtom.com/support
+paths:
+  /traffic/services/{versionNumber}/incidentDetails:
+    parameters:
+      - $ref: '#/components/parameters/versionNumberNewAPI'
+      - name: fields
+        in: query
+        description: >-
+          The fields to be included in the response, nested as in the response
+          schema. For more information refer to the <a
+          href=https://developer.tomtom.com/traffic-api/documentation/traffic-incidents/incident-details/#request-parameters>request
+          parameters</a>.
+        required: false
+        schema:
+          type: string
+          default: >-
+            {incidents{type,geometry{type,coordinates},properties{iconCategory}}}
+      - name: language
+        in: query
+        description: >-
+          The language code for the output language. Affects the description
+          fields in the response. When an incident description does not have a
+          translation, an English description is returned.
+        required: false
+        schema:
+          type: string
+          enum:
+            - ar
+            - ca-ES
+            - cs-CZ
+            - da-DK
+            - de-DE
+            - el-GR
+            - en-GB
+            - en-US
+            - es-ES
+            - et-EE
+            - fi-FI
+            - fr-FR
+            - he-IL
+            - hu-HU
+            - id-ID
+            - it-IT
+            - ko-KR
+            - lt-LT
+            - lv-LV
+            - nb-NO
+            - nl-NL
+            - pl-PL
+            - pt-PT
+            - ro-RO
+            - ru-RU
+            - sk-SK
+            - sv-SE
+            - th-TH
+            - tr-TR
+            - zh-TW
+          default: en-GB
+      - name: t
+        in: query
+        description: >-
+          The Traffic Model ID is the reference value for the state of traffic
+          at a particular time. It is updated every minute, and is valid for two
+          minutes before it times out.
+        required: false
+        schema:
+          type: string
+      - name: categoryFilter
+        in: query
+        description: >-
+          This filter allows the choice of types of incidents and future
+          incidents to be included in the response. Filtering takes into account
+          the main icon category of the incident. Both value types can be used:
+          numeric and descriptive strings. Multiple values are supported and
+          should be separated by a comma.
+        required: false
+        schema:
+          type: string
+          default: 0,1,2,3,4,5,6,7,8,9,10,11,14
+      - name: timeValidityFilter
+        in: query
+        description: >-
+          This filter allows the choice of incidents based on their occurrence
+          in time. Multiple values are supported and they should be separated by
+          a comma.
+        required: false
+        schema:
+          type: string
+          enum:
+            - present
+            - future
+            - present,future
+          default: present
+    get:
+      tags:
+        - Traffic Incidents
+      summary: Traffic Incident Details v5
+      description: >-
+        <b>This is the new and improved version (5) of the Incident Details
+        endpoint. We highly recommend that you use this new version 5 rather
+        than the old version 4, which we marked as deprecated.</b>
+
+          The Incident Details service provides information on traffic incidents which are inside a given bounding box or whose geometry intersects with it.
+            - The freshness of data is based on the provided <b>Traffic Model ID</b>.
+            - The data obtained from this service can be used as standalone or as an extension to other Traffic Incident services.
+            - In the second case, the same Traffic Model ID should be used when calling all services, in order to grant synchronization of data between APIs.
+      parameters:
+        - name: mutuallyExclusiveParameters
+          in: query
+          required: true
+          explode: true
+          style: form
+          description: >-
+            <ul> <li><b>bbox</b> <ul>
+              <li>These are two longitude-latitude pairs describing the corners of
+              the bounding box.</li>
+              <li>The first pair is for the lower-left corner and the second pair
+              for the upper-right corner.</li>
+              <li>All values should be separated by a comma.</li>
+              <li>The maximum area of a bounding box is 10'000 km<sup>2</sup>.</li>
+            </ul> <b>Values</b>: minLon,minLat,maxLon,maxLat</li> <li><b>ids</b>
+            <ul>
+              <li>Comma separated list of incidents IDs.</li>
+              <li>The maximum number of incidents IDs is 5 for <code>GET</code> requests and 100 for <code>POST</code> requests.</li>
+            </ul></li>
+          schema:
+            type: object
+            properties:
+              bbox:
+                type: string
+                example: >-
+                  4.8854592519716675,52.36934334773164,4.897883244144765,52.37496348620152
+              ids:
+                type: string
+            minProperties: 1
+            maxProperties: 1
+            additionalProperties: false
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+    post:
+      tags:
+        - Traffic Incidents
+      summary: Traffic Incident Details v5
+      description: >-
+        <b>This is the new and improved version (5) of the Incident Details
+        endpoint. We highly recommend that you use this new version 5 rather
+        than the old version 4, which we marked as deprecated.</b>
+
+          The Incident Details service provides information on traffic incidents which are inside a given bounding box or whose geometry intersects with it.
+            - The freshness of data is based on the provided <b>Traffic Model ID</b>.
+            - The data obtained from this service can be used as standalone or as an extension to other Traffic Incident services.
+            - In the second case, the same Traffic Model ID should be used when calling all services, in order to grant synchronization of data between APIs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+  /traffic/map/{versionNumber}/tile/incidents/{style}/{zoom}/{x}/{y}.{format}:
+    get:
+      tags:
+        - Traffic Incidents
+      summary: Traffic Raster Incident Tiles
+      description: >-
+        The TomTom Traffic Tile service serves 256 x 256 pixel or 512 x 512
+        pixel tiles showing traffic incidents.
+          - All tiles use the same grid system.
+          - Because the traffic tiles use transparent images, they can be layered on top of map tiles to create a compound display.
+          - Traffic tiles render graphics to indicate traffic on the roads in the specified area.
+          - The Traffic incidents tiles use colors to indicate the <i>magnitude of delay</i> associated with the particular incident on a road segment.
+            - <i>The magnitude of delay</i> is determined based on the severity of traffic congestion associated with the particular incident.
+      parameters:
+        - $ref: '#/components/parameters/versionNumber'
+        - name: style
+          in: path
+          description: |-
+            The style to be used to render the tile.
+              - s0 and s0-dark create traffic lines with different color intensities and colored chevrons            indicating the severity.
+              - s1 creates traffic lines with colored chevrons indicating the severity.
+              - s2 and s3 create plain lines with different degrees of glow.
+              - night does not group incidents into clusters.
+              - <b>Styles s0 and s0-dark are recommended to use.</b>
+          required: true
+          schema:
+            type: string
+            enum:
+              - s0
+              - s0-dark
+              - s1
+              - s2
+              - s3
+              - night
+          example: s0
+        - $ref: '#/components/parameters/tileZoom'
+        - $ref: '#/components/parameters/tileX'
+        - $ref: '#/components/parameters/tileY'
+        - name: format
+          in: path
+          description: The format of the response.
+          required: true
+          schema:
+            type: string
+            enum:
+              - png
+              - gif
+          example: png
+        - $ref: '#/components/parameters/tileTrafficModelId'
+        - $ref: '#/components/parameters/tileSize'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+        '596':
+          $ref: '#/components/responses/596'
+  /traffic/map/{versionNumber}/tile/incidents/{zoom}/{x}/{y}.{format}:
+    get:
+      tags:
+        - Traffic Incidents
+      summary: Traffic Vector Incident Tiles
+      description: >-
+        The Traffic Vector Incidents Tiles API provides data on zoom levels
+        ranging from 0 to 22. For zoom level 0, the world is displayed on a
+        single tile, while at zoom level 22, the world is divided into 244
+        tiles.
+
+        The service delivers traffic incidents data packaged in a vector
+        representation of squared sections called vector tiles.
+          - Each tile includes a pre-defined collection of road shapes with traffic incidents data.
+          - The format of a tile is formally described using the protobuf schema.
+      parameters:
+        - $ref: '#/components/parameters/versionNumber'
+        - $ref: '#/components/parameters/tileZoom'
+        - $ref: '#/components/parameters/tileX'
+        - $ref: '#/components/parameters/tileY'
+        - name: format
+          in: path
+          required: true
+          description: The format of the response.
+          schema:
+            type: string
+            enum:
+              - pbf
+        - $ref: '#/components/parameters/tileTrafficModelId'
+        - name: tags
+          in: query
+          description: |-
+            Array of tags enclosed in the tile.  
+            By default, only the default tags are attached to the tile geometry. See Vector format for details.
+            <ul>
+              <li>The list of the values must be enclosed in square brackets <code>[ ]</code>, and each value must be separated by a comma.</li>
+              <li>The parameter behaves as a filter, narrowing down the list of tags enclosed in each tile, which allows a decrease in the size of the tile.</li>
+              <li>Only tags that are used in both of the two protobuf layers can be used as a parameter value.</li>
+
+              <li>If the array of parameters is empty, only the tags unique for the particular layer are sent.</li>
+            </ul>
+          schema:
+            type: string
+          example: >-
+            [icon_category,description,delay,left_hand_traffic,magnitude,traffic_road_coverage,end_date,id,road_category,road_subcategory]
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '304':
+          $ref: '#/components/responses/304'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+        '596':
+          $ref: '#/components/responses/596'
+  /traffic/services/{versionNumber}/incidentViewport/{boundingBox}/{boundingZoom}/{overviewBox}/{overviewZoom}/{copyright}/{contentType}:
+    get:
+      tags:
+        - Traffic Incidents
+      summary: Traffic Incident Viewport
+      description: >-
+        This service returns legal and technical information for the viewport
+        described in the request.
+      parameters:
+        - $ref: '#/components/parameters/versionNumber'
+        - name: boundingBox
+          in: path
+          description: |-
+            Bounding box of the map viewport in an EPSG:900913 projection.
+              - The maximum size of the bounding box that can be passed is dependent on the requested zoom level.
+              - The width and height cannot exceed the square of a side of 16 tiles for a given zoom level.
+            Value: minY,minX,maxY,maxX
+          required: true
+          schema:
+            type: string
+          example: >-
+            -939584.4813015489,-23954526.723651607,14675583.153020501,25043442.895825107
+        - name: boundingZoom
+          in: path
+          description: >-
+            Zoom level of the map viewport. Used to determine whether the view
+            can be zoomed in.
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 22
+          example: 2
+        - name: overviewBox
+          in: path
+          description: |-
+            Bounding box of the overview map in EPSG:900913 projection.
+              - Used in case the overview box/mini map has different copyright data than the main map.
+              - If there is no mini map, use the same coordinates as in the preceding boundingBox parameter.
+            <b>Value:</b> minY,minX,maxY,maxX
+          required: true
+          schema:
+            type: string
+          example: >-
+            -939584.4813015489,-23954526.723651607,14675583.153020501,25043442.895825107
+        - name: overviewZoom
+          in: path
+          description: >-
+            Zoom level of the overview map. If there is no mini map, use the
+            same zoom level as boundingZoom above.
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 22
+          example: 2
+        - name: copyright
+          in: path
+          description: >-
+            Determines what copyright information to return. When true the
+            copyright text is returned. When false only the copyright index is
+            returned.
+          required: true
+          schema:
+            type: boolean
+            default: true
+        - name: contentType
+          in: path
+          description: >-
+            The content type of the response structure. If the content type is
+            jsonp, a callback method must be specified at the end of the service
+            call.
+          required: true
+          schema:
+            type: string
+            enum:
+              - xml
+              - json
+              - jsonp
+          example: json
+        - name: jsonp
+          in: query
+          description: Specifies the callback method. Only used where contentType is jsonp.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+        '596':
+          $ref: '#/components/responses/596'
+  /traffic/services/{versionNumber}/flowSegmentData/{style}/{zoom}/{format}:
+    get:
+      tags:
+        - Traffic Flow
+      summary: Flow Segment Data
+      description: >-
+        This service provides information about the speeds and travel times of
+        the road fragment closest to the given coordinates.
+          - It is designed to work alongside the Flow Tiles to support clickable flow data visualizations.
+          - With this API, the client side can connect any place in the map with flow data on the closest road and present it to the user.
+      parameters:
+        - $ref: '#/components/parameters/versionNumber'
+        - name: style
+          in: path
+          description: >-
+            The style used with Raster Flow Tiles and Vector Flow Tiles. This
+            has an effect on the coordinates in the response.
+          required: true
+          schema:
+            type: string
+            enum:
+              - relative0
+              - relative0-dark
+              - absolute
+              - relative
+              - relative-delay
+          example: relative0
+        - name: zoom
+          in: path
+          description: >-
+            The zoom level. This has an effect on the following items:
+              - <b>Traffic flow coordinates</b>: There may be a slight deviation between the provided coordinates on different zoom levels.
+              - <b>Visibility of the particular road</b>: Roads of lower importance are only visible on zoom levels with a higher value.
+            When Flow Segment data is used together with the Traffic Flow
+            service, the zoom should be the same in both calls.
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 22
+          example: 10
+        - name: format
+          in: path
+          description: >-
+            The content type of the Response structure. If the content type is
+            jsonp, a callback method can be specified at the end of the service
+            call.
+          required: true
+          schema:
+            type: string
+            enum:
+              - xml
+              - json
+              - jsonp
+          example: json
+        - name: point
+          in: query
+          description: >-
+            The coordinates of the point close to the road segment. They must be
+            comma-separated and calculated using EPSG:4326 projection(also known
+            as WGS84).<br/> <b>Value</b>: latitude,longitude<br/> <b>Range of
+            values</b>: (-90.00000 - 90.00000),(-180.00000 - 180.00000)
+          required: true
+          schema:
+            type: string
+            pattern: >-
+              ^-?0*(([0-8][0-9]|[0-9])\.\d*|90\.\d*),-?0*(([1][0-7][0-9]|[0-9][0-9]|[0-9]|)\.\d*|180\.\d*)$
+          example: 52.41072,4.84239
+        - name: unit
+          in: query
+          description: The unit of speed.
+          required: false
+          schema:
+            type: string
+            enum:
+              - KMPH
+              - MPH
+            default: KMPH
+        - $ref: '#/components/parameters/thickness'
+        - name: openLr
+          in: query
+          description: Determines whether the response includes OpenLR code.
+          required: false
+          schema:
+            type: boolean
+            enum:
+              - true
+              - false
+            default: false
+        - name: jsonp
+          in: query
+          description: >-
+            Specifies the callback method. Only used where <b>contentType</b> is
+            jsonp.
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '405':
+          $ref: '#/components/responses/405'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+        '596':
+          $ref: '#/components/responses/596'
+  /traffic/map/{versionNumber}/tile/flow/{style}/{zoom}/{x}/{y}.{format}:
+    get:
+      tags:
+        - Traffic Flow
+      summary: Raster Flow Tiles
+      description: >-
+        The TomTom Traffic Raster Flow Tile service serves 256 x 256 pixel or
+        512 x 512 pixel tiles showing traffic flow.
+          - All tiles use the same grid system.
+          - Because the traffic tiles use transparent images, they can be layered on top of map tiles to create a compound display.
+          - The Raster Flow tiles use colors to indicate either the speed of traffic on different road segments, or the difference between that speed and the free-flow speed on the road segment in question.
+      parameters:
+        - $ref: '#/components/parameters/versionNumber'
+        - name: style
+          in: path
+          description: |-
+            The style to be used to render the tile.
+              - When the style is absolute, the colors will reflect the absolute speed measured.
+              - Calls using the relative, relative0 and relative0-dark styles return the speed relative to free-flow, highlighting areas of congestion.
+              - Style relative-delay displays relative speeds only where they are different from the free-flow speeds.
+              - Style reduced-sensitivity displays relative speeds but larger difference from free-flow (depending on FRC) is required for segment to change the color.
+              - <b>Styles relative0 and relative0-dark are recommended to use.</b>
+          required: true
+          schema:
+            type: string
+            enum:
+              - relative0
+              - relative0-dark
+              - absolute
+              - relative
+              - relative-delay
+              - reduced-sensitivity
+          example: relative0
+        - $ref: '#/components/parameters/tileZoom'
+        - $ref: '#/components/parameters/tileX'
+        - $ref: '#/components/parameters/tileY'
+        - name: format
+          in: path
+          description: The mime type for the response.
+          required: true
+          schema:
+            type: string
+            enum:
+              - png
+        - $ref: '#/components/parameters/thickness'
+        - $ref: '#/components/parameters/tileSize'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+        '596':
+          $ref: '#/components/responses/596'
+  /traffic/map/{versionNumber}/tile/flow/{type}/{zoom}/{x}/{y}.{format}:
+    get:
+      tags:
+        - Traffic Flow
+      summary: Vector Flow Tiles
+      description: >-
+        The Traffic Vector Flow Tiles API endpoint provides data on zoom levels
+        ranging from 0 to 22.
+          - For zoom level 0, the world is displayed on a single tile.
+          - At zoom level 22, the world is divided into 244 tiles. See the Zoom Levels and Tile Grid.
+
+        The service delivers traffic flow data packaged in a vector
+        representation of squared sections called vector tiles.
+          - Each tile includes a pre-defined collection of road shapes with traffic flow data.
+          - The format of the tile is formally described using the protobuf schema.
+
+        It shows either the current speed of traffic on different road segments,
+        or the difference between current speed and the free-flow speed on the
+        road segment.
+      parameters:
+        - $ref: '#/components/parameters/versionNumber'
+        - name: type
+          in: path
+          description: |-
+            Types of traffic flow.
+              - <b>absolute</b>: This reflects the absolute speed.
+              - <b>relative</b>: This is the speed relative to free-flow, highlighting areas of congestion.
+              - <b>relative-delay</b>: The relative speed values are different from the ones for the free-flow. This only highlights areas of congestion.
+          required: true
+          schema:
+            type: string
+            enum:
+              - absolute
+              - relative
+              - relative-delay
+          example: relative
+        - $ref: '#/components/parameters/tileZoom'
+        - $ref: '#/components/parameters/tileX'
+        - $ref: '#/components/parameters/tileY'
+        - name: format
+          in: path
+          description: The format of the response.
+          required: true
+          schema:
+            type: string
+            enum:
+              - pbf
+        - name: margin
+          in: query
+          description: The size of tile margin, relative to the tile size.
+          required: false
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 0.1
+            default: 0.1
+            exmaple: 0.04
+        - name: tags
+          in: query
+          description: >-
+            The list of the values representing the available tags in the tile:
+              - road_type
+              - traffic_level
+              - traffic_road_coverage
+              - left_hand_traffic
+              - road_closure
+              - road_category
+              - road_subcategory
+
+            By default, only the default tags are attached to the tile geometry. See the
+            Vector format for details. The list of the values must be enclosed
+            in square brackets [ ], and each value must be separated by a comma.
+            The parameter behaves as a filter by narrowing down the list of tags
+            enclosed in each tile. It also allows a decrease in the size of the
+            tile. If the array of parameters is empty, only the geometry will be
+            sent.
+          schema:
+            type: string
+          example: >-
+            [traffic_level,traffic_road_coverage,left_hand_traffic,road_closure,road_category,road_subcategory]
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/400'
+        '403':
+          $ref: '#/components/responses/403'
+        '429':
+          $ref: '#/components/responses/429'
+        '500':
+          $ref: '#/components/responses/500'
+        '503':
+          $ref: '#/components/responses/503'
+        '596':
+          $ref: '#/components/responses/596'
+security:
+  - api_key: []
+components:
+  parameters:
+    versionNumber:
+      name: versionNumber
+      in: path
+      description: Version of the service to call.
+      required: true
+      schema:
+        type: integer
+        enum:
+          - 4
+    versionNumberNewAPI:
+      name: versionNumber
+      in: path
+      description: Version of the service to call.
+      required: true
+      schema:
+        type: integer
+        enum:
+          - 5
+    tileZoom:
+      name: zoom
+      in: path
+      description: Zoom level of tile to be rendered.
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 22
+      example: 12
+    tileX:
+      name: x
+      in: path
+      description: x coordinate of tile on zoom grid.
+      required: true
+      schema:
+        type: integer
+      example: 1207
+    tileY:
+      name: 'y'
+      in: path
+      description: y coordinate of tile on zoom grid
+      required: true
+      schema:
+        type: integer
+      example: 1539
+    tileSize:
+      name: tileSize
+      in: query
+      description: The tile size dimension in pixels.
+      required: false
+      schema:
+        type: integer
+        enum:
+          - 256
+          - 512
+        default: 256
+    tileTrafficModelId:
+      name: t
+      in: query
+      description: >-
+        The Traffic Model ID is the reference value for the state of traffic at
+        a particular time.
+          - It can be obtained from the Viewport API.
+          - It is updated every minute, and is valid for two minutes before it times out.
+          - Use <b>-1</b> to get the most recent traffic information.
+      required: false
+      schema:
+        type: string
+        default: '-1'
+      example: '-1'
+    thickness:
+      name: thickness
+      in: query
+      description: The segment width multiplier.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 20
+  responses:
+    '200':
+      description: <b>OK</b>
+    '304':
+      description: <b>Not modified</b>
+    '400':
+      description: <b>Bad request:</b> usually due to a malformed syntax.
+    '403':
+      description: <b>Forbidden:</b> The supplied API Key is not valid for this request.
+
+    '405':
+      description: >-
+        <b>Method Not Allowed:</b> The provided HTTP Request method is known by
+        the server, but is not supported by the target resource.
+    '429':
+      description: >-
+        <b>Too Many Requests:</b> Too many requests were sent in a given amount
+        of time for the supplied API Key.
+    '500':
+      description: <b>Internal Server Error</b>
+    '503':
+      description: <b>Service currently unavailable</b>
+    '596':
+      description: <b>Service not found:</b> Unknown version of the service.
+  securitySchemes:
+    api_key:
+      type: apiKey
+      in: query
+      name: key

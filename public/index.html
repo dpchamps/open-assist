@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Assist</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #conversation {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #16213e;
+            border: 1px solid #0f3460;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #0f3460;
+        }
+
+        #controls {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            border-top: 1px solid #16213e;
+        }
+
+        #status {
+            font-size: 0.85rem;
+            color: #888;
+            min-height: 1.2em;
+        }
+
+        #push-to-talk {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #e94560;
+            background: transparent;
+            color: #e94560;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        #push-to-talk:hover {
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        #push-to-talk.recording {
+            background: #e94560;
+            color: #fff;
+            border-color: #e94560;
+            transform: scale(1.1);
+        }
+
+        #push-to-talk:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #connection-status {
+            position: fixed;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #888;
+        }
+
+        #connection-status.connected {
+            background: #4ecca3;
+        }
+    </style>
+</head>
+<body>
+    <div id="connection-status"></div>
+    <div id="conversation"></div>
+    <div id="controls">
+        <div id="status"></div>
+        <button id="push-to-talk" disabled>HOLD</button>
+    </div>
+
+    <script>
+        const conversationEl = document.getElementById('conversation');
+        const statusEl = document.getElementById('status');
+        const pttButton = document.getElementById('push-to-talk');
+        const connStatus = document.getElementById('connection-status');
+
+        let ws = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let currentAssistantEl = null;
+        let streamingPlayer = null;
+
+        const addMessage = (role, text) => {
+            const el = document.createElement('div');
+            el.className = `message ${role}`;
+            el.textContent = text;
+            conversationEl.appendChild(el);
+            conversationEl.scrollTop = conversationEl.scrollHeight;
+            return el;
+        };
+
+        const setStatus = (text) => {
+            statusEl.textContent = text;
+        };
+
+        const createStreamingPlayer = () => {
+            let audioCtx = null;
+            let headerParsed = false;
+            let headerBuffer = new Uint8Array(0);
+            let remainder = new Uint8Array(0);
+            let sampleRate = 0;
+            let numChannels = 0;
+            let bytesPerSample = 0;
+            let nextStartTime = 0;
+
+            const parseHeader = (data) => {
+                const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+                numChannels = view.getUint16(22, true);
+                sampleRate = view.getUint32(24, true);
+                const bitsPerSample = view.getUint16(34, true);
+                bytesPerSample = bitsPerSample / 8;
+
+                let dataOffset = 36;
+                while (dataOffset <= data.byteLength - 8) {
+                    if (data[dataOffset] === 0x64 && data[dataOffset + 1] === 0x61 &&
+                        data[dataOffset + 2] === 0x74 && data[dataOffset + 3] === 0x61) {
+                        dataOffset += 8;
+                        break;
+                    }
+                    dataOffset++;
+                }
+
+                audioCtx = new AudioContext({ sampleRate });
+                audioCtx.resume();
+                nextStartTime = audioCtx.currentTime;
+                headerParsed = true;
+
+                return data.slice(dataOffset);
+            };
+
+            const scheduleChunk = (pcmData) => {
+                if (remainder.byteLength > 0) {
+                    const merged = new Uint8Array(remainder.byteLength + pcmData.byteLength);
+                    merged.set(remainder);
+                    merged.set(pcmData, remainder.byteLength);
+                    pcmData = merged;
+                    remainder = new Uint8Array(0);
+                }
+
+                const blockAlign = numChannels * bytesPerSample;
+                const frameCount = Math.floor(pcmData.byteLength / blockAlign);
+                const usedBytes = frameCount * blockAlign;
+
+                if (usedBytes < pcmData.byteLength) {
+                    remainder = pcmData.slice(usedBytes);
+                }
+
+                if (frameCount === 0) return;
+
+                const audioBuffer = audioCtx.createBuffer(numChannels, frameCount, sampleRate);
+                const view = new DataView(pcmData.buffer, pcmData.byteOffset, usedBytes);
+
+                for (let ch = 0; ch < numChannels; ch++) {
+                    const channelData = audioBuffer.getChannelData(ch);
+                    for (let i = 0; i < frameCount; i++) {
+                        const byteOffset = (i * numChannels + ch) * bytesPerSample;
+                        if (bytesPerSample === 2) {
+                            channelData[i] = view.getInt16(byteOffset, true) / 32768;
+                        } else if (bytesPerSample === 3) {
+                            const b0 = pcmData[byteOffset];
+                            const b1 = pcmData[byteOffset + 1];
+                            const b2 = pcmData[byteOffset + 2];
+                            const val = (b2 << 16) | (b1 << 8) | b0;
+                            channelData[i] = (val > 0x7FFFFF ? val - 0x1000000 : val) / 8388608;
+                        }
+                    }
+                }
+
+                const source = audioCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioCtx.destination);
+
+                const startTime = Math.max(nextStartTime, audioCtx.currentTime);
+                source.start(startTime);
+                nextStartTime = startTime + audioBuffer.duration;
+            };
+
+            return {
+                feed: (chunk) => {
+                    const data = new Uint8Array(chunk);
+
+                    if (!headerParsed) {
+                        const merged = new Uint8Array(headerBuffer.byteLength + data.byteLength);
+                        merged.set(headerBuffer);
+                        merged.set(data, headerBuffer.byteLength);
+                        headerBuffer = merged;
+
+                        if (headerBuffer.byteLength < 44) return;
+
+                        const pcmData = parseHeader(headerBuffer);
+                        headerBuffer = new Uint8Array(0);
+                        scheduleChunk(pcmData);
+                    } else {
+                        scheduleChunk(data);
+                    }
+                },
+                done: () => {
+                    if (audioCtx) {
+                        const closeTime = nextStartTime - audioCtx.currentTime;
+                        if (closeTime > 0) {
+                            setTimeout(() => audioCtx.close(), closeTime * 1000 + 100);
+                        } else {
+                            audioCtx.close();
+                        }
+                    }
+                }
+            };
+        };
+
+        const connect = () => {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws`);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                connStatus.classList.add('connected');
+                pttButton.disabled = false;
+                setStatus('Ready');
+            };
+
+            ws.onclose = () => {
+                connStatus.classList.remove('connected');
+                pttButton.disabled = true;
+                setStatus('Disconnected. Reconnecting...');
+                setTimeout(connect, 2000);
+            };
+
+            ws.onerror = () => {
+                ws.close();
+            };
+
+            ws.onmessage = (event) => {
+                if (event.data instanceof ArrayBuffer) {
+                    if (!streamingPlayer) {
+                        streamingPlayer = createStreamingPlayer();
+                    }
+                    streamingPlayer.feed(event.data);
+                    return;
+                }
+
+                const msg = JSON.parse(event.data);
+
+                switch (msg.type) {
+                    case 'status':
+                        if (msg.status === 'transcribing') setStatus('Transcribing...');
+                        if (msg.status === 'thinking') setStatus('Thinking...');
+                        break;
+
+                    case 'transcript':
+                        addMessage('user', msg.text);
+                        break;
+
+                    case 'text_delta':
+                        if (!currentAssistantEl) {
+                            currentAssistantEl = addMessage('assistant', '');
+                        }
+                        currentAssistantEl.textContent += msg.delta;
+                        conversationEl.scrollTop = conversationEl.scrollHeight;
+                        break;
+
+                    case 'audio_done':
+                        if (streamingPlayer) {
+                            streamingPlayer.done();
+                            streamingPlayer = null;
+                        }
+                        currentAssistantEl = null;
+                        setStatus('Ready');
+                        pttButton.disabled = false;
+                        break;
+
+                    case 'error':
+                        setStatus(`Error: ${msg.message}`);
+                        currentAssistantEl = null;
+                        if (streamingPlayer) {
+                            streamingPlayer.done();
+                            streamingPlayer = null;
+                        }
+                        pttButton.disabled = false;
+                        break;
+                }
+            };
+        };
+
+        const startRecording = async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
+                if (audioChunks.length === 0 || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+                const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                blob.arrayBuffer().then(buf => {
+                    ws.send(buf);
+                    pttButton.disabled = true;
+                    setStatus('Sending...');
+                });
+            };
+
+            mediaRecorder.start();
+            pttButton.classList.add('recording');
+            setStatus('Recording...');
+        };
+
+        const stopRecording = () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            pttButton.classList.remove('recording');
+        };
+
+        pttButton.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (pttButton.disabled) return;
+            startRecording();
+        });
+
+        pttButton.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+
+        pttButton.addEventListener('pointerleave', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+
+        connect();
+    </script>
+</body>
+</html>
