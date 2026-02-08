@@ -1,4 +1,5 @@
 import { Type } from '@mariozechner/pi-ai';
+import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { geocodeAddress } from './geocode.js';
 import { searchPlaces } from './search.js';
 
@@ -6,12 +7,6 @@ const parameters = Type.Object({
     query: Type.String({ description: 'What to search for (e.g. "post office", "gas station", "pharmacy")' }),
     near: Type.Optional(Type.String({ description: 'Location to search near (e.g. "south east Portland", "downtown Seattle")' })),
 });
-
-export const definition = {
-    name: 'search_nearby',
-    description: 'Search for places and points of interest like businesses, services, and landmarks. Optionally narrow results to a specific area.',
-    parameters,
-};
 
 const metersToMiles = (meters: number) => (meters * 0.000621371).toFixed(1);
 
@@ -27,7 +22,7 @@ const formatResult = (props: { poi?: { name: string }; address: { freeformAddres
         : `${index + 1}. ${address}${distance}`;
 };
 
-export const execute = async (params: { query: string; near?: string }) => {
+const executeSearchNearby = async (params: { query: string; near?: string }) => {
     const position = params.near
         ? await geocodeAddress(params.near).then((place) => place.geometry.coordinates as [number, number])
         : undefined;
@@ -51,4 +46,18 @@ export const execute = async (params: { query: string; near?: string }) => {
         .map((f, i) => formatResult(f.properties, i));
 
     return [header, '', ...results].join('\n');
+};
+
+export const searchNearby: AgentTool<typeof parameters> = {
+    name: 'search_nearby',
+    description: 'Search for places and points of interest like businesses, services, and landmarks. Optionally narrow results to a specific area.',
+    label: 'Searching nearby',
+    parameters,
+    execute: async (_toolCallId, params) => ({
+        content: [{
+            type: 'text',
+            text: await executeSearchNearby(params),
+        }],
+        details: {},
+    }),
 };

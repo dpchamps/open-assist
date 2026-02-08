@@ -1,9 +1,10 @@
 import { writeFile } from 'node:fs/promises';
-import { getModel, type Context } from '@mariozechner/pi-ai';
+import { getModel, type AssistantMessage, type Message } from '@mariozechner/pi-ai';
+import { agentLoop, type AgentContext, type AgentLoopConfig, type AgentMessage } from '@mariozechner/pi-agent-core';
 import type { google } from '@google-cloud/text-to-speech/build/protos/protos.js';
 import 'dotenv/config';
 import { tools } from './tools/index.js';
-import { streamConversation } from './conversation.js';
+import { transformContext } from './context.js';
 import { transcribeFile } from './stt.js';
 import { createTtsStream, buildWavHeader } from './tts.js';
 
@@ -17,11 +18,22 @@ console.log(`User: ${userMessage}`);
 
 const model = getModel('openrouter', 'deepseek/deepseek-v3.2');
 
-const context: Context = {
+const convertToLlm = (messages: AgentMessage[]): Message[] => messages as Message[];
+
+const context: AgentContext = {
     systemPrompt: 'You are a helpful assistant.',
-    messages: [{ role: 'user', content: userMessage, timestamp: Date.now() }],
+    messages: [],
     tools,
 };
+
+const config: AgentLoopConfig = {
+    model,
+    convertToLlm,
+    apiKey: process.env["OPENROUTER_KEY"] || "",
+    transformContext,
+};
+
+const prompt: Message = { role: 'user', content: userMessage, timestamp: Date.now() };
 
 const tts = createTtsStream();
 const chunks: Buffer[] = [];
@@ -37,17 +49,24 @@ const audioComplete = new Promise<void>((resolve, reject) => {
     tts.stream.on('end', resolve);
 });
 
-const { finalMessage } = await streamConversation(model, context, {
-    apiKey: process.env["OPENROUTER_KEY"] || ""
-}, {
-    onTextDelta: (delta) => {
-        hasText = true;
-        tts.write(delta);
-    },
-    onComplete: () => {
-        tts.end();
-    },
-});
+const eventStream = agentLoop([prompt], context, config);
+
+let finalMessages: AgentMessage[] = [];
+for await (const event of eventStream) {
+    switch (event.type) {
+        case 'message_update':
+            if (event.assistantMessageEvent.type === 'text_delta') {
+                hasText = true;
+                process.stdout.write(event.assistantMessageEvent.delta);
+                tts.write(event.assistantMessageEvent.delta);
+            }
+            break;
+        case 'agent_end':
+            finalMessages = event.messages;
+            break;
+    }
+}
+tts.end();
 
 if (hasText) {
     await audioComplete;
@@ -55,8 +74,11 @@ if (hasText) {
     const pcmData = Buffer.concat(chunks);
     const wavHeader = buildWavHeader(pcmData.length, 24000, 1, 16);
     await writeFile('./response.wav', Buffer.concat([wavHeader, pcmData]));
-    console.log(`Audio saved to ./response.wav`);
+    console.log(`\nAudio saved to ./response.wav`);
 }
 
-console.log(`\nTotal tokens: ${finalMessage.usage.input} in, ${finalMessage.usage.output} out`);
-console.log(`Cost: $${finalMessage.usage.cost.total.toFixed(4)}`);
+const lastAssistant = [...finalMessages].reverse().find((m): m is AssistantMessage => (m as Message).role === 'assistant');
+if (lastAssistant) {
+    console.log(`\nTotal tokens: ${lastAssistant.usage.input} in, ${lastAssistant.usage.output} out`);
+    console.log(`Cost: $${lastAssistant.usage.cost.total.toFixed(4)}`);
+}

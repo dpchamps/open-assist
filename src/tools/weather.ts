@@ -1,4 +1,5 @@
 import { Type, type Static } from '@mariozechner/pi-ai';
+import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { fetchWeatherApi } from 'openmeteo';
 import { geocodeAddress } from './tomtom/geocode.js';
 
@@ -10,12 +11,6 @@ const parameters = Type.Object({
         Type.Literal('week'),
     ], { description: 'Timeframe: "now" for current conditions, "day" for today\'s hourly forecast, "week" for 7-day forecast' }),
 });
-
-export const definition = {
-    name: 'get_weather',
-    description: 'Get weather information for a location. Supports current conditions, today\'s hourly forecast, or a 7-day forecast.',
-    parameters,
-};
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 
@@ -183,7 +178,7 @@ const formatDailyForecast = (label: string, days: Awaited<ReturnType<typeof fetc
     return [header, '', ...rows].join('\n');
 };
 
-export const execute = async (params: Static<typeof parameters>) => {
+const executeWeather = async (params: Static<typeof parameters>) => {
     const { latitude, longitude, label } = await resolveCoordinates(params.location);
 
     switch (params.timeframe) {
@@ -194,4 +189,18 @@ export const execute = async (params: Static<typeof parameters>) => {
         case 'week':
             return fetchDaily(latitude, longitude).then((days) => formatDailyForecast(label, days));
     }
+};
+
+export const weather: AgentTool<typeof parameters> = {
+    name: 'get_weather',
+    description: 'Get weather information for a location. Supports current conditions, today\'s hourly forecast, or a 7-day forecast.',
+    label: 'Checking weather',
+    parameters,
+    execute: async (_toolCallId, params) => ({
+        content: [{
+            type: 'text',
+            text: await executeWeather(params),
+        }],
+        details: {},
+    }),
 };

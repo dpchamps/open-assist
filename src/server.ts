@@ -10,12 +10,14 @@ import { handleConnection } from './ws-handler.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(__dirname, '..', 'public');
 
-const apiKey = process.env['ANTHROPIC_KEY'] ?? '';
+// const apiKey = process.env['ANTHROPIC_KEY'] ?? '';
+const apiKey = process.env['OPENROUTER_KEY'] ?? '';
 if (!apiKey) {
     console.warn('Warning: OPENROUTER_KEY not set in environment');
 }
 
-const model = getModel('anthropic', 'claude-opus-4-5');
+// const model = getModel('anthropic', 'claude-opus-4-5');
+const model = getModel('openrouter', "qwen/qwen3-235b-a22b-2507");
 const port = Number(process.env['PORT']) || 3000;
 
 const MIME_TYPES: Record<string, string> = {

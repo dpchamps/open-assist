@@ -1,4 +1,5 @@
-import { Type, type Static } from '@mariozechner/pi-ai';
+import { Type } from '@mariozechner/pi-ai';
+import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,13 +9,16 @@ const userDetailsPath = resolve(__dirname, '..', '..', 'public', 'user-details.j
 
 const parameters = Type.Object({});
 
-export const definition = {
+export const listCurrentUserDetails: AgentTool<typeof parameters> = {
     name: 'list_current_user_details',
     description: 'Get the current user details including name, location, job, interests, and bio',
+    label: 'Loading user details',
     parameters,
-};
-
-export const execute = async (_params: Static<typeof parameters>) => {
-    const raw = await readFile(userDetailsPath, 'utf-8');
-    return raw;
+    execute: async (_toolCallId, _params) => ({
+        content: [{
+            type: 'text',
+            text: await readFile(userDetailsPath, 'utf-8'),
+        }],
+        details: {},
+    }),
 };

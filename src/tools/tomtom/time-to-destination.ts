@@ -1,4 +1,5 @@
 import { Type } from '@mariozechner/pi-ai';
+import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { geocodeAddress } from './geocode.js';
 import { getRoute } from './routing.js';
 
@@ -6,12 +7,6 @@ const parameters = Type.Object({
     origin: Type.String({ description: 'Starting address (e.g. "1250 E Burnside St, Portland OR")' }),
     destination: Type.String({ description: 'Destination address (e.g. "1400 SW 5th Ave, Portland OR")' }),
 });
-
-export const definition = {
-    name: 'time_to_destination',
-    description: 'Calculate travel time between two addresses, including traffic conditions, distance, and route details',
-    parameters,
-};
 
 const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -21,7 +16,7 @@ const formatDuration = (seconds: number) => {
 
 const metersToMiles = (meters: number) => (meters * 0.000621371).toFixed(1);
 
-export const execute = async (params: { origin: string; destination: string }) => {
+const executeTimeToDestination = async (params: { origin: string; destination: string }) => {
     const [originPlace, destinationPlace] = await Promise.all([
         geocodeAddress(params.origin),
         geocodeAddress(params.destination),
@@ -52,4 +47,18 @@ export const execute = async (params: { origin: string; destination: string }) =
     }
 
     return lines.join('\n');
+};
+
+export const timeToDestination: AgentTool<typeof parameters> = {
+    name: 'time_to_destination',
+    description: 'Calculate travel time between two addresses, including traffic conditions, distance, and route details',
+    label: 'Calculating route',
+    parameters,
+    execute: async (_toolCallId, params) => ({
+        content: [{
+            type: 'text',
+            text: await executeTimeToDestination(params),
+        }],
+        details: {},
+    }),
 };

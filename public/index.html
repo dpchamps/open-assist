@@ -17,7 +17,14 @@
             color: #e0e0e0;
             height: 100vh;
             display: flex;
+            flex-direction: row;
+        }
+
+        #main-panel {
+            flex: 1;
+            display: flex;
             flex-direction: column;
+            min-width: 0;
         }
 
         #conversation {
@@ -27,6 +34,124 @@
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+        }
+
+        #dev-panel {
+            width: 420px;
+            border-left: 1px solid #16213e;
+            display: flex;
+            flex-direction: column;
+            background: #12122a;
+        }
+
+        #dev-panel-header {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #666;
+            border-bottom: 1px solid #16213e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #dev-panel-header button {
+            background: none;
+            border: 1px solid #333;
+            color: #666;
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #dev-panel-header button:hover {
+            color: #e0e0e0;
+            border-color: #555;
+        }
+
+        #dev-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+        }
+
+        .dev-entry {
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            margin-bottom: 1px;
+            display: flex;
+            gap: 0.5rem;
+            align-items: baseline;
+        }
+
+        .dev-entry:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .dev-ts {
+            color: #444;
+            flex-shrink: 0;
+        }
+
+        .dev-tag {
+            flex-shrink: 0;
+            padding: 0 0.3rem;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+
+        .dev-detail {
+            color: #999;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-width: 0;
+        }
+
+        .dev-tag.turn_start, .dev-tag.turn_end {
+            background: #1a3a5c;
+            color: #5b9bd5;
+        }
+
+        .dev-tag.text_delta {
+            background: #1a3c1a;
+            color: #6bcb77;
+        }
+
+        .dev-tag.thinking_delta {
+            background: #3c2f1a;
+            color: #d4a855;
+        }
+
+        .dev-tag.tool_call {
+            background: #2d1a3c;
+            color: #b77de0;
+        }
+
+        .dev-tag.tool_exec_start {
+            background: #1a2a3c;
+            color: #6ba3d6;
+        }
+
+        .dev-tag.tool_exec_end {
+            background: #1a3c2d;
+            color: #4ecca3;
+        }
+
+        .dev-tag.tool_exec_error {
+            background: #3c1a1a;
+            color: #e94560;
+        }
+
+        .dev-tag.message_end, .dev-tag.agent_end {
+            background: #222;
+            color: #666;
         }
 
         .message {
@@ -114,10 +239,19 @@
 </head>
 <body>
     <div id="connection-status"></div>
-    <div id="conversation"></div>
-    <div id="controls">
-        <div id="status"></div>
-        <button id="push-to-talk" disabled>HOLD</button>
+    <div id="main-panel">
+        <div id="conversation"></div>
+        <div id="controls">
+            <div id="status"></div>
+            <button id="push-to-talk" disabled>HOLD</button>
+        </div>
+    </div>
+    <div id="dev-panel">
+        <div id="dev-panel-header">
+            <span>Agent Events</span>
+            <button id="dev-clear">Clear</button>
+        </div>
+        <div id="dev-log"></div>
     </div>
 
     <script src="/js/wakeword.js"></script>
@@ -126,6 +260,43 @@
         const statusEl = document.getElementById('status');
         const pttButton = document.getElementById('push-to-talk');
         const connStatus = document.getElementById('connection-status');
+        const devLog = document.getElementById('dev-log');
+        const devClearBtn = document.getElementById('dev-clear');
+
+        const formatTime = (ts) => {
+            const d = new Date(ts);
+            return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+        };
+
+        const addDevEntry = (event, detail, timestamp) => {
+            const el = document.createElement('div');
+            el.className = 'dev-entry';
+
+            const tsEl = document.createElement('span');
+            tsEl.className = 'dev-ts';
+            tsEl.textContent = formatTime(timestamp);
+
+            const tagEl = document.createElement('span');
+            tagEl.className = `dev-tag ${event}`;
+            tagEl.textContent = event;
+
+            el.appendChild(tsEl);
+            el.appendChild(tagEl);
+
+            if (detail) {
+                const detailEl = document.createElement('span');
+                detailEl.className = 'dev-detail';
+                detailEl.textContent = detail;
+                el.appendChild(detailEl);
+            }
+
+            devLog.appendChild(el);
+            devLog.scrollTop = devLog.scrollHeight;
+        };
+
+        devClearBtn.addEventListener('click', () => {
+            devLog.innerHTML = '';
+        });
 
         let ws = null;
         let mediaRecorder = null;
@@ -321,8 +492,13 @@
                         pttButton.disabled = false;
                         break;
 
+                    case 'dev_event':
+                        addDevEntry(msg.event, msg.detail, msg.timestamp);
+                        break;
+
                     case 'error':
                         setStatus(`Error: ${msg.message}`);
+                        addDevEntry('error', msg.message, Date.now());
                         currentAssistantEl = null;
                         if (streamingPlayer) {
                             streamingPlayer.done();
