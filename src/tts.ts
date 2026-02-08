@@ -18,6 +18,8 @@ const DEFAULT_VOICE = { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Achernar' 
 const DEFAULT_SAMPLE_RATE = 24000;
 const DEFAULT_ENCODING = 'PCM' as const;
 
+const KEEPALIVE_INTERVAL_MS = 4000;
+
 export const createTtsStream = (options?: StreamingTtsOptions): TtsStream => {
   const client = new TextToSpeechClient();
   const stream = client.streamingSynthesize();
@@ -35,11 +37,25 @@ export const createTtsStream = (options?: StreamingTtsOptions): TtsStream => {
 
   stream.write({ streamingConfig: config });
 
+  let keepaliveTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
+    stream.write({ input: { text: ' ' } });
+  }, KEEPALIVE_INTERVAL_MS);
+
+  const resetKeepalive = () => {
+    if (keepaliveTimer) clearInterval(keepaliveTimer);
+    keepaliveTimer = setInterval(() => {
+      stream.write({ input: { text: ' ' } });
+    }, KEEPALIVE_INTERVAL_MS);
+  };
+
   return {
     write: (text: string) => {
       stream.write({ input: { text } });
+      resetKeepalive();
     },
     end: () => {
+      if (keepaliveTimer) clearInterval(keepaliveTimer);
+      keepaliveTimer = null;
       stream.end();
     },
     stream,

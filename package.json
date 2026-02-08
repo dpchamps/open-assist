@@ -23,6 +23,8 @@
     "@mariozechner/pi-ai": "^0.52.8",
     "@tomtom-org/maps-sdk": "^0.42.1",
     "dotenv": "^17.2.4",
+    "openmeteo": "^1.2.3",
+    "openwakeword-wasm-browser": "^0.1.1",
     "ws": "^8.19.0"
   },
   "type": "module"
