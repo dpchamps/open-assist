@@ -120,6 +120,7 @@
         <button id="push-to-talk" disabled>HOLD</button>
     </div>
 
+    <script src="/js/wakeword.js"></script>
     <script>
         const conversationEl = document.getElementById('conversation');
         const statusEl = document.getElementById('status');
@@ -383,6 +384,42 @@
         });
 
         connect();
+
+        const wakeWordEngine = new WakeWordEngine({
+            keywords: ['hey_jarvis'],
+            baseAssetUrl: '/models',
+            ortWasmPath: '/wasm/',
+        });
+
+        wakeWordEngine.on('ready', () => {
+            console.log('[WakeWord] Engine ready');
+        });
+
+        wakeWordEngine.on('detect', (detection) => {
+            console.log('[WakeWord] Detected:', detection.keyword, 'score:', detection.score);
+            if (pttButton.disabled) return;
+
+            startRecording();
+
+            let minTimeElapsed = false;
+            let stopped = false;
+
+            const unsub = wakeWordEngine.on('speech-end', () => {
+                if (!minTimeElapsed) return;
+                unsub();
+                stopRecording();
+            });
+
+            setTimeout(() => {
+                minTimeElapsed = true;
+            }, 1500);
+        });
+
+        wakeWordEngine.on('error', (err) => {
+            console.error('[WakeWord] Error:', err);
+        });
+
+        wakeWordEngine.load().then(() => wakeWordEngine.start());
     </script>
 </body>
 </html>

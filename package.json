@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx ./src/main.ts",
-    "start:web": "tsx ./src/server.ts",
+    "build:wakeword": "esbuild src/browser/wakeword-entry.js --bundle --format=iife --platform=browser --outfile=public/js/wakeword.js",
+    "copy:models": "cp -r node_modules/openwakeword-wasm-browser/models/*.onnx public/models/",
+    "copy:wasm": "cp node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded*.wasm node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded*.mjs public/wasm/",
+    "build:browser": "mkdir -p public/js public/models public/wasm && npm run copy:models && npm run copy:wasm && npm run build:wakeword",
+    "start:web": "npm run build:browser && tsx ./src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

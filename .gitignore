@@ -141,3 +141,7 @@ vite.config.ts.timestamp-*
 .vite/
 .env
 keys
+
+public/js/
+public/models/
+public/wasm/

@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { getModel } from '@mariozechner/pi-ai';
@@ -15,35 +15,63 @@ if (!apiKey) {
     console.warn('Warning: OPENROUTER_KEY not set in environment');
 }
 
-// const model = getModel('openrouter', 'deepseek/deepseek-v3.2');
 const model = getModel('anthropic', 'claude-opus-4-5');
 const port = Number(process.env['PORT']) || 3000;
 
+const MIME_TYPES: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.mjs': 'application/javascript; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.wasm': 'application/wasm',
+    '.onnx': 'application/octet-stream',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+};
+
+const SHARED_HEADERS = {
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+};
+
 const server = createServer(async (req, res) => {
-    if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-        const html = await readFile(resolve(publicDir, 'index.html'), 'utf-8')
-            .catch(() => null);
-
-        if (!html) {
-            res.writeHead(404);
-            res.end('Not found');
-            return;
-        }
-
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(html);
+    if (req.method !== 'GET') {
+        res.writeHead(404, SHARED_HEADERS);
+        res.end('Not found');
         return;
     }
 
-    res.writeHead(404);
-    res.end('Not found');
+    const urlPath = req.url === '/' ? '/index.html' : req.url ?? '/';
+    const filePath = resolve(publicDir, normalize(urlPath).replace(/^\/+/, ''));
+
+    if (!filePath.startsWith(publicDir)) {
+        res.writeHead(403, SHARED_HEADERS);
+        res.end('Forbidden');
+        return;
+    }
+
+    const fileData = await readFile(filePath).catch(() => null);
+
+    if (!fileData) {
+        res.writeHead(404, SHARED_HEADERS);
+        res.end('Not found');
+        return;
+    }
+
+    const ext = extname(filePath);
+    const contentType = MIME_TYPES[ext] ?? 'application/octet-stream';
+
+    res.writeHead(200, { 'Content-Type': contentType, ...SHARED_HEADERS });
+    res.end(fileData);
 });
 
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', async (ws) => {
     console.log('WebSocket client connected');
-    const systemPrompt = await readFile(resolve(publicDir, "assistant-prompt.md"), 'utf8')
+    const systemPrompt = await readFile(resolve(publicDir, "assistant-prompt.md"), 'utf8');
     handleConnection(ws, model, apiKey, systemPrompt);
 
     ws.on('close', () => {

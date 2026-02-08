@@ -14,7 +14,7 @@ type TtsStream = {
   stream: ReturnType<TextToSpeechClient['streamingSynthesize']>;
 };
 
-const DEFAULT_VOICE = { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Achernar' };
+const DEFAULT_VOICE = { languageCode: 'en-US', name: 'en-US-Chirp3-HD-Kore' };
 const DEFAULT_SAMPLE_RATE = 24000;
 const DEFAULT_ENCODING = 'PCM' as const;
 
