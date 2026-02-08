@@ -1,0 +1,94 @@
+{
+  "items": [
+    {
+      "name": "olive oil",
+      "quantity": 1,
+      "unit": "jar",
+      "category": "pantry"
+    },
+    {
+      "name": "flour",
+      "quantity": 1,
+      "unit": "bag",
+      "category": "pantry"
+    },
+    {
+      "name": "oatmeal",
+      "quantity": 1,
+      "unit": "bag",
+      "category": "pantry"
+    },
+    {
+      "name": "salt",
+      "quantity": 1,
+      "unit": "container",
+      "category": "pantry"
+    },
+    {
+      "name": "pepper",
+      "quantity": 1,
+      "unit": "container",
+      "category": "pantry"
+    },
+    {
+      "name": "sugar",
+      "quantity": 1,
+      "unit": "bag",
+      "category": "pantry"
+    },
+    {
+      "name": "cooking oil",
+      "quantity": 1,
+      "unit": "bottle",
+      "category": "pantry"
+    },
+    {
+      "name": "paprika",
+      "quantity": 1,
+      "unit": "container",
+      "category": "pantry"
+    },
+    {
+      "name": "brown sugar",
+      "quantity": 1,
+      "unit": "bag",
+      "category": "pantry"
+    },
+    {
+      "name": "vanilla",
+      "quantity": 1,
+      "unit": "bottle",
+      "category": "pantry"
+    },
+    {
+      "name": "all-purpose flour",
+      "quantity": 1,
+      "unit": "bag",
+      "category": "pantry"
+    },
+    {
+      "name": "baking soda",
+      "quantity": 1,
+      "unit": "container",
+      "category": "pantry"
+    },
+    {
+      "name": "cinnamon",
+      "quantity": 1,
+      "unit": "container",
+      "category": "pantry"
+    },
+    {
+      "name": "oat milk",
+      "quantity": 1,
+      "unit": "carton",
+      "category": "pantry"
+    },
+    {
+      "name": "onion",
+      "quantity": 1,
+      "unit": "bag",
+      "category": "pantry"
+    }
+  ]
+}
