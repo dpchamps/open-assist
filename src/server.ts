@@ -6,6 +6,7 @@ import { WebSocketServer } from 'ws';
 import { getModel } from '@mariozechner/pi-ai';
 import 'dotenv/config';
 import { handleConnection } from './ws-handler.js';
+import { exchangeCodeForTokens, writeTokens } from './tools/kroger/auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(__dirname, '..', 'public');
@@ -42,6 +43,29 @@ const server = createServer(async (req, res) => {
     if (req.method !== 'GET') {
         res.writeHead(404, SHARED_HEADERS);
         res.end('Not found');
+        return;
+    }
+
+    const parsedUrl = new URL(req.url ?? '/', `http://${req.headers.host}`);
+
+    if (parsedUrl.pathname === '/kroger/callback') {
+        const code = parsedUrl.searchParams.get('code');
+        if (!code) {
+            res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8', ...SHARED_HEADERS });
+            res.end('<html><body><h1>Error</h1><p>No authorization code received.</p></body></html>');
+            return;
+        }
+        await exchangeCodeForTokens(code)
+            .then((tokens) => writeTokens(tokens))
+            .then(() => {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...SHARED_HEADERS });
+                res.end('<html><body><h1>Kroger Authorization Successful</h1><p>You can close this tab and return to the assistant.</p></body></html>');
+            })
+            .catch((err) => {
+                console.error('Kroger OAuth callback error:', err);
+                res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8', ...SHARED_HEADERS });
+                res.end(`<html><body><h1>Authorization Failed</h1><p>${err instanceof Error ? err.message : String(err)}</p></body></html>`);
+            });
         return;
     }
 
