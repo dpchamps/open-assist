@@ -21,15 +21,26 @@ const readLocalCart = (path: string): Promise<LocalCart> =>
 const formatPrice = (price: number | null) =>
     price !== null ? `$${price.toFixed(2)}` : 'N/A';
 
-const formatProductMatch = (term: string, matches: ReadonlyArray<{ upc: string; description: string; brand: string; price: number | null; promoPrice: number | null }>) => {
+type CartContext = { quantity: number; unit: string };
+
+const formatProductMatch = (
+    term: string,
+    matches: ReadonlyArray<{ upc: string; description: string; brand: string; price: number | null; promoPrice: number | null; size: string | null }>,
+    cartContext?: CartContext,
+) => {
     if (matches.length === 0) return `"${term}": No matches found`;
 
+    const header = cartContext
+        ? `"${term}" (cart: ${cartContext.quantity} ${cartContext.unit}):`
+        : `"${term}":`;
+
     const lines = matches.map((m, i) => {
+        const size = m.size ? ` (${m.size})` : '';
         const promo = m.promoPrice !== null ? ` (sale: ${formatPrice(m.promoPrice)})` : '';
-        return `  ${i + 1}. [${m.upc}] ${m.brand} - ${m.description} — ${formatPrice(m.price)}${promo}`;
+        return `  ${i + 1}. [${m.upc}] ${m.brand} - ${m.description}${size} — ${formatPrice(m.price)}${promo}`;
     });
 
-    return [`"${term}":`, ...lines].join('\n');
+    return [header, ...lines].join('\n');
 };
 
 const parameters = Type.Object({
@@ -48,16 +59,23 @@ const parameters = Type.Object({
     )),
 });
 
-const executeSearch = async (params: { location_id?: string; search_terms?: ReadonlyArray<string> }) => {
-    const terms = params.search_terms ?? (await readLocalCart(cartPath)).items.map((item) => item.name);
+type SearchEntry = { term: string; cartContext?: CartContext };
 
-    if (terms.length === 0) return 'No items to search for. The local cart is empty.';
+const executeSearch = async (params: { location_id?: string; search_terms?: ReadonlyArray<string> }) => {
+    const entries: ReadonlyArray<SearchEntry> = params.search_terms
+        ? params.search_terms.map((term) => ({ term }))
+        : (await readLocalCart(cartPath)).items.map((item) => ({
+            term: item.name,
+            cartContext: { quantity: item.quantity, unit: item.unit },
+        }));
+
+    if (entries.length === 0) return 'No items to search for. The local cart is empty.';
 
     const results = await Promise.all(
-        terms.map((term) =>
-            searchProducts(term, { locationId: params.location_id })
-                .then((matches) => formatProductMatch(term, matches))
-                .catch((err) => `"${term}": Search failed — ${err instanceof Error ? err.message : String(err)}`)
+        entries.map((entry) =>
+            searchProducts(entry.term, { locationId: params.location_id })
+                .then((matches) => formatProductMatch(entry.term, matches, entry.cartContext))
+                .catch((err) => `"${entry.term}": Search failed — ${err instanceof Error ? err.message : String(err)}`)
         )
     );
 
@@ -73,7 +91,7 @@ const executeAdd = async (items: ReadonlyArray<{ upc: string; quantity: number }
 
 export const syncCartToKroger: AgentTool<typeof parameters> = {
     name: 'sync_cart_to_kroger',
-    description: 'Sync the local shopping cart to Kroger. Use "search" to find Kroger products matching local cart items (returns UPCs and prices for review). Use "add" to add specific UPCs and quantities to the Kroger cart.',
+    description: 'Sync the local shopping cart to Kroger. Use "search" to find Kroger products matching local cart items — results include cart quantities/units and product sizes so you can determine how many packages to add (e.g. if the cart says "3 count" chicken breasts and a pack is "3 lb", you likely need 1 pack, not 3). Use "add" to add specific UPCs and quantities to the Kroger cart.',
     label: 'Syncing cart to Kroger',
     parameters,
     execute: async (_toolCallId, params) => ({

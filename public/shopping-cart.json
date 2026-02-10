@@ -1,3 +1,70 @@
 {
-  "items": []
+  "items": [
+    {
+      "name": "rolled oats",
+      "quantity": 1,
+      "unit": "bag",
+      "type": "grocery"
+    },
+    {
+      "name": "oat milk",
+      "quantity": 1,
+      "unit": "carton",
+      "type": "grocery"
+    },
+    {
+      "name": "bananas",
+      "quantity": 6,
+      "unit": "count",
+      "type": "grocery"
+    },
+    {
+      "name": "berries",
+      "quantity": 2,
+      "unit": "pints",
+      "type": "grocery"
+    },
+    {
+      "name": "Greek yogurt",
+      "quantity": 4,
+      "unit": "container",
+      "type": "grocery"
+    },
+    {
+      "name": "eggs",
+      "quantity": 12,
+      "unit": "count",
+      "type": "grocery"
+    },
+    {
+      "name": "spinach",
+      "quantity": 1,
+      "unit": "bunch",
+      "type": "grocery"
+    },
+    {
+      "name": "carrots",
+      "quantity": 5,
+      "unit": "count",
+      "type": "grocery"
+    },
+    {
+      "name": "apples",
+      "quantity": 6,
+      "unit": "count",
+      "type": "grocery"
+    },
+    {
+      "name": "almonds",
+      "quantity": 1,
+      "unit": "bag",
+      "type": "grocery"
+    },
+    {
+      "name": "canned lentils",
+      "quantity": 3,
+      "unit": "cans",
+      "type": "grocery"
+    }
+  ]
 }

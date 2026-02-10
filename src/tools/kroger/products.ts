@@ -7,6 +7,7 @@ type KrogerProductItem = {
     description: string;
     brand: string;
     items: ReadonlyArray<{
+        size?: string;
         price?: {
             regular: number;
             promo: number;
@@ -25,6 +26,7 @@ export type ProductMatch = {
     brand: string;
     price: number | null;
     promoPrice: number | null;
+    size: string | null;
 };
 
 type SearchOptions = {
@@ -47,6 +49,7 @@ const toProductMatch = (item: KrogerProductItem): ProductMatch => ({
     description: item.description,
     brand: item.brand,
     ...extractPrice(item),
+    size: item.items[0]?.size ?? null,
 });
 
 export const searchProducts = (term: string, options: SearchOptions = {}): Promise<ReadonlyArray<ProductMatch>> => {
