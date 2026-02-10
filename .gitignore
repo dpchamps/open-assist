@@ -145,3 +145,4 @@ keys/
 public/js/
 public/models/
 public/wasm/
+./public/user-details.json
