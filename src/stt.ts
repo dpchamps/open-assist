@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
-const WHISPER_URL = 'http://local.devbox.imgplex.io:8001/v1/audio/transcriptions';
+const WHISPER_URL = process.env['WHISPER_URL'] ?? "";
 
 const transcribe = async (audioBlob: Blob, filename: string) => {
     const formData = new FormData();
