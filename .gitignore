@@ -140,7 +140,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 .env
-keys
+keys/
 
 public/js/
 public/models/
